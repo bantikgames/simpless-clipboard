@@ -1,6 +1,6 @@
 import sys
 
-from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QWidget, QListWidget, QListWidgetItem
+from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QWidget, QListWidget
 from PyQt6.QtGui import QIcon
 from pynput import keyboard
 
@@ -8,26 +8,38 @@ from pynput import keyboard
 app = QApplication(sys.argv)
 clipboard = QApplication.clipboard()
 app.setQuitOnLastWindowClosed(False)
+app.setApplicationName("Simpless Clipboard")
+app.setWindowIcon(QIcon('simpless_icon64.png'))
 
-# Создаем виджет для программы
-main_widget = QWidget()
-main_list = QListWidget()
+
+class ListWidget(QListWidget):
+    def __init__(self, parent=None):
+        super(ListWidget, self).__init__(parent)
+        self.setUniformItemSizes(True)
+
+    def windowTitle(self):
+        return "Simpless Clipboard"
+
+    def mouseDoubleClickEvent(self, event):
+        clipboard.setText(self.currentItem().text())
+
+
+widget_list = ListWidget()
 
 # Создаем меню для основного приложения и виджета
 menu = QMenu()
 showAction = menu.addAction("Показать")
-showAction.triggered.connect(main_list.show)
+showAction.triggered.connect(widget_list.show)
 hideAction = menu.addAction('Скрыть')
-hideAction.triggered.connect(main_list.hide)
+hideAction.triggered.connect(widget_list.hide)
 exitAction = menu.addAction("Закрыть")
 exitAction.triggered.connect(app.quit)
 
 # Создаем иконку и помещаем ее в системный трей
-trayIcon = QSystemTrayIcon(QIcon('simpless_icon64.png'), parent=main_widget)
+trayIcon = QSystemTrayIcon(QIcon('simpless_icon64.png'), parent=widget_list)
 trayIcon.setToolTip('Кликнуть ПКМ, чтобы открыть настройки')
 trayIcon.show()
 trayIcon.setContextMenu(menu)
-
 
 # Создаем список с историей буфера обмена и задаем его максимальный объем
 clipboard_history = []
@@ -62,7 +74,7 @@ def on_press(key):
                     for _ in file:
                         count += 1
                     file.write(current_clipboard_text.strip() + '\n')
-                    main_list.addItem(current_clipboard_text.strip())
+                    widget_list.addItem(current_clipboard_text.strip())
                     print(
                         f'Элемент {current_clipboard_text.strip()} добавлен в историю буфера обмена. Всего в буфере {count} записей')
             else:
@@ -72,7 +84,7 @@ def on_press(key):
 def load_clipboard_history():
     with open("clipboard_history.txt", "r+") as file:
         for i in file:
-            main_list.addItem(i.strip())
+            widget_list.addItem(i.strip())
 
 
 def on_release(key):
@@ -84,6 +96,6 @@ def on_release(key):
 
 if __name__ == '__main__':
     load_clipboard_history()
-    listener = keyboard.Listener(on_press=on_press, on_release=on_release)
-    listener.start()
+    keyboard_listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+    keyboard_listener.start()
     sys.exit(app.exec())

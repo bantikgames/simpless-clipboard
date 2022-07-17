@@ -6,3 +6,9 @@
 Мышка
 Бабушка
 И жили они долго и счастливо и умерли в один день
+button_click_count = 0
+count = 0
+Бабушка и дедушка
+count = 0с
+def sizeHint(self):
+app = Application()
