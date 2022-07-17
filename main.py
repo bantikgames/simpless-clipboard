@@ -17,9 +17,6 @@ class ListWidget(QListWidget):
         super(ListWidget, self).__init__(parent)
         self.setUniformItemSizes(True)
 
-    def windowTitle(self):
-        return "Simpless Clipboard"
-
     def mouseDoubleClickEvent(self, event):
         clipboard.setText(self.currentItem().text())
 
