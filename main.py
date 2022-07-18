@@ -1,23 +1,26 @@
 import sys
 
-from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QWidget, QListWidget
+from PyQt6.QtCore import QTimer
+from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QListWidget
 from PyQt6.QtGui import QIcon
 from pynput import keyboard
 
 # Создаем основное приложение
 app = QApplication(sys.argv)
-clipboard = QApplication.clipboard()
 app.setQuitOnLastWindowClosed(False)
 app.setApplicationName("Simpless Clipboard")
 app.setWindowIcon(QIcon('simpless_icon64.png'))
 
+clipboard = QApplication.clipboard()
+
 
 class ListWidget(QListWidget):
-    def __init__(self, parent=None):
-        super(ListWidget, self).__init__(parent)
+    def __init__(self):
+        super(ListWidget, self).__init__()
         self.setUniformItemSizes(True)
 
     def mouseDoubleClickEvent(self, event):
+        show_tray_message(trayIcon, "Текст скопирован в буфер обмена", self.currentItem().text())
         clipboard.setText(self.currentItem().text())
 
 
@@ -58,6 +61,12 @@ current_copy = set()
 current_paste = set()
 
 
+def show_tray_message(tray: QSystemTrayIcon, notification_title, notification_message):
+    icon = QIcon('simpless_icon64.png')
+    duration = 3 * 1000
+    tray.showMessage(notification_title, notification_message, icon, duration)
+
+
 # Обрабатываем нажатие и отпускание клавиш копирования и вставки
 def on_press(key):
     if any([key in comb for comb in COPY_COMBINATIONS]):
@@ -73,7 +82,8 @@ def on_press(key):
                     file.write(current_clipboard_text.strip() + '\n')
                     widget_list.addItem(current_clipboard_text.strip())
                     print(
-                        f'Элемент {current_clipboard_text.strip()} добавлен в историю буфера обмена. Всего в буфере {count} записей')
+                        f'Элемент {current_clipboard_text.strip()} добавлен в историю буфера обмена. Всего в буфере'
+                        f' {count} записей')
             else:
                 print("Строка пустая")
 
