@@ -1,17 +1,31 @@
 import sys
-
-from PyQt6.QtCore import QTimer
-from PyQt6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QListWidget
-from PyQt6.QtGui import QIcon
+from PyQt6.QtWidgets import (
+    QApplication,
+    QSystemTrayIcon,
+    QMenu,
+    QListWidget,
+    QMainWindow,
+    QVBoxLayout,
+    QWidget,
+    QPushButton)
+from PyQt6.QtGui import QIcon, QClipboard
 from pynput import keyboard
 
 # Создаем основное приложение
+
 app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)
-app.setApplicationName("Simpless Clipboard")
-app.setWindowIcon(QIcon('simpless_icon64.png'))
 
 clipboard = QApplication.clipboard()
+
+# Комбинации горячих клавиш
+COPY_COMBINATIONS = [
+    {keyboard.Key.ctrl_l, keyboard.KeyCode(char='c')},
+    {keyboard.Key.ctrl_r, keyboard.KeyCode(char='c')}
+]
+
+# Текущие нажатые клавиши
+current_copy = set()
 
 
 class ListWidget(QListWidget):
@@ -26,39 +40,57 @@ class ListWidget(QListWidget):
 
 widget_list = ListWidget()
 
+
+def click_on_button():
+    with open("clipboard_history.txt", "r+") as file:
+        file.truncate(0)
+    widget_list.clear()
+
+
+def copy_text():
+    current_clipboard_text = clipboard.text(mode=QClipboard.Mode.Selection)
+    if current_clipboard_text and not current_clipboard_text.isspace():
+        with open("clipboard_history.txt", "r+") as file:
+            file.write(current_clipboard_text.strip() + '\n')
+            widget_list.addItem(current_clipboard_text.strip())
+
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.setWindowTitle("Simpless Clipboard")
+        self.setWindowIcon(QIcon('simpless_icon64.png'))
+
+        btn_clear = QPushButton("Очистить историю буфера обмена")
+        btn_clear.pressed.connect(click_on_button)
+
+        layout = QVBoxLayout()
+        layout.addWidget(widget_list)
+        layout.addWidget(btn_clear)
+
+        widget = QWidget()
+        widget.setLayout(layout)
+        self.setCentralWidget(widget)
+
+        clipboard.dataChanged.connect(copy_text)
+
+
+main_window = MainWindow()
+
 # Создаем меню для основного приложения и виджета
 menu = QMenu()
 showAction = menu.addAction("Показать")
-showAction.triggered.connect(widget_list.show)
+showAction.triggered.connect(main_window.show)
 hideAction = menu.addAction('Скрыть')
-hideAction.triggered.connect(widget_list.hide)
+hideAction.triggered.connect(main_window.hide)
 exitAction = menu.addAction("Закрыть")
 exitAction.triggered.connect(app.quit)
 
 # Создаем иконку и помещаем ее в системный трей
-trayIcon = QSystemTrayIcon(QIcon('simpless_icon64.png'), parent=widget_list)
+trayIcon = QSystemTrayIcon(QIcon('simpless_icon64.png'), parent=main_window)
 trayIcon.setToolTip('Кликнуть ПКМ, чтобы открыть настройки')
 trayIcon.show()
 trayIcon.setContextMenu(menu)
-
-# Создаем список с историей буфера обмена и задаем его максимальный объем
-clipboard_history = []
-max_clipboard_count = 50
-
-# Комбинации горячих клавиш
-COPY_COMBINATIONS = [
-    {keyboard.Key.ctrl_l, keyboard.KeyCode(char='c')},
-    {keyboard.Key.ctrl_r, keyboard.KeyCode(char='c')}
-]
-
-PASTE_COMBINATIONS = [
-    {keyboard.Key.ctrl_l, keyboard.KeyCode(char='u')},
-    {keyboard.Key.ctrl_r, keyboard.KeyCode(char='u')}
-]
-
-# Текущие нажатые клавиши
-current_copy = set()
-current_paste = set()
 
 
 def show_tray_message(tray: QSystemTrayIcon, notification_title, notification_message):
@@ -67,31 +99,18 @@ def show_tray_message(tray: QSystemTrayIcon, notification_title, notification_me
     tray.showMessage(notification_title, notification_message, icon, duration)
 
 
+def load_clipboard_history():
+    with open("clipboard_history.txt", "r+") as file:
+        for i in file:
+            widget_list.addItem(i.strip())
+
+
 # Обрабатываем нажатие и отпускание клавиш копирования и вставки
 def on_press(key):
     if any([key in comb for comb in COPY_COMBINATIONS]):
         current_copy.add(key)
         if any(all(k in current_copy for k in comb) for comb in COPY_COMBINATIONS):
-            current_clipboard_text = clipboard.text()
-            clipboard_history.append(current_clipboard_text)
-            if current_clipboard_text and not current_clipboard_text.isspace():
-                with open("clipboard_history.txt", "r+") as file:
-                    count = 1
-                    for _ in file:
-                        count += 1
-                    file.write(current_clipboard_text.strip() + '\n')
-                    widget_list.addItem(current_clipboard_text.strip())
-                    print(
-                        f'Элемент {current_clipboard_text.strip()} добавлен в историю буфера обмена. Всего в буфере'
-                        f' {count} записей')
-            else:
-                print("Строка пустая")
-
-
-def load_clipboard_history():
-    with open("clipboard_history.txt", "r+") as file:
-        for i in file:
-            widget_list.addItem(i.strip())
+            copy_text()
 
 
 def on_release(key):
