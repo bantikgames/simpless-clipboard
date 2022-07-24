@@ -1,2 +1,1 @@
-installed.
-Otherwise
+print(listbox.get(i))
