@@ -1,1 +1,1 @@
-print(listbox.get(i))
+file_exists = os.path.exists('readme.txt')

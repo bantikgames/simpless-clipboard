@@ -1,30 +1,34 @@
-import tkinter
 from tkinter import *
-import customtkinter
 from pystray import MenuItem as item
-from PIL import Image, ImageTk
+from PIL import Image
 from time import sleep
+import tkinter.messagebox
 import pystray
 import pyperclip
 import keyboard
-
-# Настраиваем свойства
-customtkinter.set_appearance_mode("dark")  # Modes: system (default), light, dark
-customtkinter.set_default_color_theme("dark-blue")  # Themes: blue (default), dark-blue, green
+import os.path
 
 # Создаем окно приложения
-main_window = customtkinter.CTk()
+main_window = Tk()
 main_window.title("Simpless Clipboard")
 main_window.configure(background="white")
+main_window.iconbitmap("simpless_icon64.ico")
 
-# Устанавливам размер окна приложения
-main_window.geometry("700x350")
+# Создаем надпись с помощью
+help_label = Label(text='Чтобы скопировать текст в буфер, дважды кликните по нему ЛКМ', background="white")
+
+# Устанавливам размер окна приложения и отключаем изменение размера
+main_window.geometry("400x260")
+main_window.resizable(False, False)
 
 # Создаем экземпляр буфера обмена
 clipboard = pyperclip
 
-# Создаем экземпляр списка
-clipboard_list = Listbox(main_window, width=40, borderwidth=2, background="white", height=350)
+# Создаем список с историей буфера обмена
+clipboard_list = Listbox(main_window, width=85, borderwidth=0, background="white", height=10)
+
+# Всплывающие сообщения
+message_box = tkinter.messagebox
 
 
 # Выход из приложения
@@ -54,43 +58,42 @@ def keyboard_pressed(event):
         sleep(0.2)
         current_clipboard_text = clipboard.paste()
         if current_clipboard_text and not current_clipboard_text.isspace():
-            with open("clipboard_history.txt", "a") as file:
+            with open("clipboard_history.txt", "a+") as file:
                 file.write(current_clipboard_text.strip() + '\n')
                 clipboard_list.insert(END, current_clipboard_text.strip())
 
 
+# Загрузка содержимого файла с историей буфера обмена в программу
 def load_clipboard_history():
-    with open("clipboard_history.txt", "r+") as file:
-        for line in file:
-            clipboard_list.insert(END, line.strip())
+    if os.path.exists("clipboard_history.txt"):
+        with open("clipboard_history.txt", "r+") as file:
+            clipboard_list.insert(END, file.readlines())
 
 
+# Очистка истории буфера обмена
 def clear_clipboard_history():
     with open("clipboard_history.txt", "r+") as file:
         file.truncate(0)
     clipboard_list.delete(0, END)
 
 
+# Вставка содержимое истории в буфер обмена по двойному клику ЛКМ
 def double_click(event):
     for i in clipboard_list.curselection():
         clipboard.copy(clipboard_list.get(i))
+        message_box.showinfo("Текст скопирован", clipboard_list.get(i))
 
 
 # Создаем кнопки для управления
-
-clear_clipboard_button = customtkinter.CTkButton(master=main_window, text="Очистить историю буфера обмена", width=120,
-                                                 height=32,
-                                                 border_width=0,
-                                                 corner_radius=1, command=clear_clipboard_history)
-clear_clipboard_button.place(relx=.5, rely=.5, anchor=tkinter.CENTER)
+clear_clipboard_button = Button(text="Очистить историю буфера обмена", width=50,
+                                height=2, command=clear_clipboard_history)
 
 if __name__ == '__main__':
     keyboard.on_press_key('c', keyboard_pressed)
     main_window.protocol('WM_DELETE_WINDOW', hide_window)
-    clipboard_list.pack(expand=0)
-    #clipboard_list.grid(row=0, column=0, sticky='nsew')
+    clipboard_list.pack(side="top")
     clipboard_list.bind('<Double-Button-1>', double_click)
-    clear_clipboard_button.pack()
-    # clear_clipboard_button.config(command=clear_clipboard_history)
+    clear_clipboard_button.pack(side="top", pady=10)
+    help_label.pack(side="top")
     load_clipboard_history()
     main_window.mainloop()
